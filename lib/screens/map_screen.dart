@@ -1,7 +1,12 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map_proj/constant/dimens.dart';
 import 'package:flutter_map_proj/constant/test_style.dart';
 import 'package:flutter_map_proj/widget/my_back_button.dart';
+import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class CurrentWidgetStates {
   CurrentWidgetStates._();
@@ -19,7 +24,13 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  List<GeoPoint> geoPoints = [];
   List currentWidgetList = [CurrentWidgetStates.stateSelectOrigin];
+  Widget markerIcon = SvgPicture.asset('assets/icons/origin.svg', height: 100, width: 40,);
+  MapController mapController = MapController(
+    initMapWithUserPosition: false,
+    initPosition: GeoPoint(latitude: 35.7367516373 , longitude: 51.2911096718 ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +38,18 @@ class _MapScreenState extends State<MapScreen> {
       child: Scaffold(
         body: Stack(
           children: [
-            Container(
-              color: Colors.blueGrey,
+            SizedBox.expand(
+              child: OSMFlutter(
+                controller: mapController,
+                trackMyPosition: false,
+                initZoom: 15,
+                isPicker: true,
+                mapIsLoading: const SpinKitCircle(color: Colors.black,),
+                minZoomLevel: 8,
+                maxZoomLevel: 18,
+                stepZoom: 1,
+                markerOption: MarkerOption(advancedPickerMarker: MarkerIcon(iconWidget: markerIcon,)),
+              ),
             ),
             MyBackButton(
               onPressed: () {
@@ -69,10 +90,15 @@ class _MapScreenState extends State<MapScreen> {
         left: Dimens.large,
         right: Dimens.large,
         child: ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
+            GeoPoint originGeoPoint = await mapController.getCurrentPositionAdvancedPositionPicker();
+            log(originGeoPoint.latitude.toString());
+            geoPoints.add(originGeoPoint);
+            markerIcon = SvgPicture.asset('assets/icons/destination.svg', height: 100, width: 48,);
             setState(() {
               currentWidgetList.add(CurrentWidgetStates.stateSelectDestination);
             });
+            mapController.init();
           },
           child: Text(
             'انتخاب مبدا',
