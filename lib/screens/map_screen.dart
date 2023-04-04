@@ -25,8 +25,11 @@ class MapScreen extends StatefulWidget {
 
 class _MapScreenState extends State<MapScreen> {
   List<GeoPoint> geoPoints = [];
+  String distance = 'در حال محاسبه فاصله ...';
   List currentWidgetList = [CurrentWidgetStates.stateSelectOrigin];
   Widget markerIcon = SvgPicture.asset('assets/icons/origin.svg', height: 100, width: 40,);
+  Widget originMarker = SvgPicture.asset('assets/icons/origin.svg', height: 100, width: 40,);
+  Widget destMarker = SvgPicture.asset('assets/icons/destination.svg', height: 100, width: 48,);
   MapController mapController = MapController(
     initMapWithUserPosition: false,
     initPosition: GeoPoint(latitude: 35.7367516373 , longitude: 51.2911096718 ),
@@ -53,6 +56,11 @@ class _MapScreenState extends State<MapScreen> {
             ),
             MyBackButton(
               onPressed: () {
+                if(geoPoints.isNotEmpty){
+                  geoPoints.removeLast();
+                  markerIcon = originMarker;
+                }
+                mapController.init();
                 if(currentWidgetList.length > 1){
                   setState(() {
                    currentWidgetList.removeLast();
@@ -94,7 +102,7 @@ class _MapScreenState extends State<MapScreen> {
             GeoPoint originGeoPoint = await mapController.getCurrentPositionAdvancedPositionPicker();
             log(originGeoPoint.latitude.toString());
             geoPoints.add(originGeoPoint);
-            markerIcon = SvgPicture.asset('assets/icons/destination.svg', height: 100, width: 48,);
+            markerIcon = destMarker;
             setState(() {
               currentWidgetList.add(CurrentWidgetStates.stateSelectDestination);
             });
@@ -113,10 +121,25 @@ class _MapScreenState extends State<MapScreen> {
         left: Dimens.large,
         right: Dimens.large,
         child: ElevatedButton(
-          onPressed: () {
+          onPressed: () async{
+            await mapController.getCurrentPositionAdvancedPositionPicker().then((value){
+              geoPoints.add(value);
+            });
+            mapController.cancelAdvancedPositionPicker();
+             await mapController.addMarker(geoPoints.first, markerIcon: MarkerIcon(iconWidget: originMarker,));
+             await mapController.addMarker(geoPoints.last, markerIcon: MarkerIcon(iconWidget: destMarker,));
             setState(() {
               currentWidgetList.add(CurrentWidgetStates.stateRequestDriver);
             });
+             await distance2point(geoPoints.first, geoPoints.last).then((value) {
+               setState(() {
+                 if(value <= 1000){
+                 distance = ' فاصله مبدا تا مقصد${value.toInt()} متر';
+                 }else{
+               distance = ' فاصله مبدا تا مقصد${value~/1000}کیلومتر ';
+                 }
+               });
+             });
           },
           child: Text(
             'انتخاب مقصد',
@@ -126,18 +149,37 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget reqDriven() {
+    mapController.zoomOut();
     return Positioned(
         bottom: Dimens.large,
         left: Dimens.large,
         right: Dimens.large,
-        child: ElevatedButton(
-          onPressed: () {
-          },
-          child: Text(
-            'درخواست راننده',
-            style: MyTextStyle.button,
-          ),
-        ));
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              height: 58,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Dimens.medium),
+                color: Colors.white,
+              ),
+              child: Center(child: Text(distance),),
+            ),
+            const SizedBox(height: Dimens.small,),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                },
+                child: Text(
+                  'درخواست راننده',
+                  style: MyTextStyle.button,
+                ),
+              ),
+            ),
+          ],
+        )
+    );
   }
 
 }
