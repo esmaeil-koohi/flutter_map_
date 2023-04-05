@@ -1,5 +1,3 @@
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_map_proj/constant/dimens.dart';
 import 'package:flutter_map_proj/constant/test_style.dart';
@@ -7,6 +5,7 @@ import 'package:flutter_map_proj/widget/my_back_button.dart';
 import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:geocoding/geocoding.dart';
 
 class CurrentWidgetStates {
   CurrentWidgetStates._();
@@ -24,9 +23,11 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  List<GeoPoint> geoPoints = [];
-  String distance = 'در حال محاسبه فاصله ...';
   List currentWidgetList = [CurrentWidgetStates.stateSelectOrigin];
+  String distance = 'در حال محاسبه فاصله ...';
+  String originAddress = 'آدرس مبدا...';
+  String destAddress = 'آدرس مقصد...';
+  List<GeoPoint> geoPoints = [];
   Widget markerIcon = SvgPicture.asset('assets/icons/origin.svg', height: 100, width: 40,);
   Widget originMarker = SvgPicture.asset('assets/icons/origin.svg', height: 100, width: 40,);
   Widget destMarker = SvgPicture.asset('assets/icons/destination.svg', height: 100, width: 48,);
@@ -54,21 +55,33 @@ class _MapScreenState extends State<MapScreen> {
                 markerOption: MarkerOption(advancedPickerMarker: MarkerIcon(iconWidget: markerIcon,)),
               ),
             ),
+            currentWidget(),
             MyBackButton(
               onPressed: () {
-                if(geoPoints.isNotEmpty){
-                  geoPoints.removeLast();
-                  markerIcon = originMarker;
+                switch(currentWidgetList.last){
+                  case CurrentWidgetStates.stateSelectOrigin:
+                    break;
+
+                  case CurrentWidgetStates.stateSelectDestination:
+                    markerIcon = originMarker;
+                    geoPoints.removeLast();
+                    break;
+
+                  case CurrentWidgetStates.stateRequestDriver:
+                    mapController.advancedPositionPicker();
+                    mapController.removeMarker(geoPoints.last);
+                    geoPoints.removeLast();
+                    markerIcon = destMarker;
+                    break;
                 }
                 mapController.init();
-                if(currentWidgetList.length > 1){
-                  setState(() {
-                   currentWidgetList.removeLast();
-                  });
-                }
+                setState(() {
+                  currentWidgetList.removeLast();
+                });
+
               },
             ),
-            currentWidget(),
+
           ],
         ),
       ),
@@ -100,7 +113,6 @@ class _MapScreenState extends State<MapScreen> {
         child: ElevatedButton(
           onPressed: () async {
             GeoPoint originGeoPoint = await mapController.getCurrentPositionAdvancedPositionPicker();
-            log(originGeoPoint.latitude.toString());
             geoPoints.add(originGeoPoint);
             markerIcon = destMarker;
             setState(() {
@@ -126,7 +138,7 @@ class _MapScreenState extends State<MapScreen> {
               geoPoints.add(value);
             });
             mapController.cancelAdvancedPositionPicker();
-             await mapController.addMarker(geoPoints.first, markerIcon: MarkerIcon(iconWidget: originMarker,));
+            await mapController.addMarker(geoPoints.first, markerIcon: MarkerIcon(iconWidget: originMarker,));
              await mapController.addMarker(geoPoints.last, markerIcon: MarkerIcon(iconWidget: destMarker,));
             setState(() {
               currentWidgetList.add(CurrentWidgetStates.stateRequestDriver);
@@ -136,10 +148,11 @@ class _MapScreenState extends State<MapScreen> {
                  if(value <= 1000){
                  distance = ' فاصله مبدا تا مقصد${value.toInt()} متر';
                  }else{
-               distance = ' فاصله مبدا تا مقصد${value~/1000}کیلومتر ';
+                 distance = ' فاصله مبدا تا مقصد${value~/1000}کیلومتر ';
                  }
                });
              });
+           await getAddress();
           },
           child: Text(
             'انتخاب مقصد',
@@ -156,6 +169,26 @@ class _MapScreenState extends State<MapScreen> {
         right: Dimens.large,
         child: Column(
           children: [
+            Container(
+              width: double.infinity,
+              height: 58,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Dimens.medium),
+                color: Colors.white,
+              ),
+              child: Center(child: Text(' مبدا: $originAddress'),),
+            ),
+            const SizedBox(height: Dimens.small,),
+            Container(
+              width: double.infinity,
+              height: 58,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(Dimens.medium),
+                color: Colors.white,
+              ),
+              child: Center(child: Text(' مقصد: $destAddress'),),
+            ),
+            const SizedBox(height: Dimens.small,),
             Container(
               width: double.infinity,
               height: 58,
@@ -180,6 +213,24 @@ class _MapScreenState extends State<MapScreen> {
           ],
         )
     );
+  }
+
+  getAddress() async{
+    try{
+    await placemarkFromCoordinates(geoPoints.last.latitude, geoPoints.last.longitude, localeIdentifier: "fa").then((List<Placemark> pList) {
+      setState(() {
+        destAddress = '${pList.first.locality} ${pList.first.thoroughfare} ${pList[2].name}';
+      });
+    });
+    await placemarkFromCoordinates(geoPoints.first.latitude, geoPoints.first.longitude, localeIdentifier: "fa").then((List<Placemark> pList) {
+      setState(() {
+        originAddress = '${pList.first.locality} ${pList.first.thoroughfare} ${pList[2].name}';
+      });
+    });
+    }catch(e){
+     originAddress = 'آدرس یافت نشد';
+     destAddress = 'آدرس یافت نشد';
+    }
   }
 
 }
