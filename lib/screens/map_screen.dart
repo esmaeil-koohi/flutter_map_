@@ -3,7 +3,6 @@ import 'package:flutter_map_proj/constant/dimens.dart';
 import 'package:flutter_map_proj/constant/test_style.dart';
 import 'package:flutter_map_proj/widget/my_back_button.dart';
 import 'package:flutter_osm_plugin/flutter_osm_plugin.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:geocoding/geocoding.dart';
 
@@ -23,11 +22,11 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  List currentWidgetList = [CurrentWidgetStates.stateSelectOrigin];
+  List<GeoPoint> geoPoints = [];
   String distance = 'در حال محاسبه فاصله ...';
   String originAddress = 'آدرس مبدا...';
   String destAddress = 'آدرس مقصد...';
-  List<GeoPoint> geoPoints = [];
+  List currentWidgetList = [CurrentWidgetStates.stateSelectOrigin];
   Widget markerIcon = SvgPicture.asset('assets/icons/origin.svg', height: 100, width: 40,);
   Widget originMarker = SvgPicture.asset('assets/icons/origin.svg', height: 100, width: 40,);
   Widget destMarker = SvgPicture.asset('assets/icons/destination.svg', height: 100, width: 48,);
@@ -46,9 +45,9 @@ class _MapScreenState extends State<MapScreen> {
               child: OSMFlutter(
                 controller: mapController,
                 trackMyPosition: false,
-                initZoom: 15,
+                initZoom: 16,
                 isPicker: true,
-                mapIsLoading: const SpinKitCircle(color: Colors.black,),
+                // mapIsLoading: const SpinKitCircle(color: Colors.black,),
                 minZoomLevel: 8,
                 maxZoomLevel: 18,
                 stepZoom: 1,
@@ -63,8 +62,8 @@ class _MapScreenState extends State<MapScreen> {
                     break;
 
                   case CurrentWidgetStates.stateSelectDestination:
-                    markerIcon = originMarker;
                     geoPoints.removeLast();
+                    markerIcon = originMarker;
                     break;
 
                   case CurrentWidgetStates.stateRequestDriver:
@@ -139,7 +138,7 @@ class _MapScreenState extends State<MapScreen> {
             });
             mapController.cancelAdvancedPositionPicker();
             await mapController.addMarker(geoPoints.first, markerIcon: MarkerIcon(iconWidget: originMarker,));
-             await mapController.addMarker(geoPoints.last, markerIcon: MarkerIcon(iconWidget: destMarker,));
+            await mapController.addMarker(geoPoints.last, markerIcon: MarkerIcon(iconWidget: destMarker,));
             setState(() {
               currentWidgetList.add(CurrentWidgetStates.stateRequestDriver);
             });
@@ -152,7 +151,7 @@ class _MapScreenState extends State<MapScreen> {
                  }
                });
              });
-           await getAddress();
+            getAddress();
           },
           child: Text(
             'انتخاب مقصد',
@@ -176,7 +175,7 @@ class _MapScreenState extends State<MapScreen> {
                 borderRadius: BorderRadius.circular(Dimens.medium),
                 color: Colors.white,
               ),
-              child: Center(child: Text(' مبدا: $originAddress'),),
+              child: Center(child: Text(' مبدا: $originAddress', style: MyTextStyle.text,),),
             ),
             const SizedBox(height: Dimens.small,),
             Container(
@@ -186,7 +185,7 @@ class _MapScreenState extends State<MapScreen> {
                 borderRadius: BorderRadius.circular(Dimens.medium),
                 color: Colors.white,
               ),
-              child: Center(child: Text(' مقصد: $destAddress'),),
+              child: Center(child: Text(' مقصد: $destAddress' , style: MyTextStyle.text,),),
             ),
             const SizedBox(height: Dimens.small,),
             Container(
@@ -196,13 +195,14 @@ class _MapScreenState extends State<MapScreen> {
                 borderRadius: BorderRadius.circular(Dimens.medium),
                 color: Colors.white,
               ),
-              child: Center(child: Text(distance),),
+              child: Center(child: Text(distance, style: MyTextStyle.text,),),
             ),
             const SizedBox(height: Dimens.small,),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: ()async {
+                  mapController.drawRoad(geoPoints.first, geoPoints.last);
                 },
                 child: Text(
                   'درخواست راننده',
@@ -227,10 +227,13 @@ class _MapScreenState extends State<MapScreen> {
         originAddress = '${pList.first.locality} ${pList.first.thoroughfare} ${pList[2].name}';
       });
     });
+    mapController.init();
     }catch(e){
      originAddress = 'آدرس یافت نشد';
      destAddress = 'آدرس یافت نشد';
     }
   }
+
+
 
 }

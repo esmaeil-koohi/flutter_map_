@@ -5,5 +5,6 @@ class MyTextStyle{
   MyTextStyle._();
 
  static TextStyle button = GoogleFonts.vazirmatn(fontSize: 20);
+ static TextStyle text = GoogleFonts.vazirmatn(fontSize: 16);
 
 }
